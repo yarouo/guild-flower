@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公会成员管理</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;font-family:system-ui}
+body{max-width:900px;margin:20px auto;padding:0 15px;background:#f7f8fa}
+.box{background:white;padding:20px;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 4px #0002}
+input,select,textarea{width:100%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:6px;font-size:16px}
+button{padding:10px 16px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:15px;margin:4px;cursor:pointer}
+.del{background:#dc2626}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{border:1px solid #e5e7eb;padding:8px;text-align:left}
+th{background:#f3f4f6}
+#login{max-width:400px;margin:100px auto}
+</style>
+</head>
+<body>
+<div id="login" class="box">
+<h2>🔐请输入访问密码</h2>
+<input type="password" id="pwd" placeholder="输入密码">
+<button onclick="checkPwd()">进入系统</button>
+</div>
+<div id="main" style="display:none">
+<h1>🌸公会成员管理</h1>
+
+<div class="box">
+<h3>🌷花种管理（在这里添加新品种）</h3>
+<input id="newFlowerName" placeholder="输入新的花种名称">
+<button onclick="addFlower()">添加花种</button>
+<div id="flowerList" style="margin-top:10px"></div>
+</div>
+
+<div class="box">
+<h3>➕新增成员</h3>
+<input id="nickname" placeholder="游戏昵称">
+<input id="level" placeholder="等级，数字">
+<textarea id="remark" placeholder="备注"></textarea>
+<button onclick="addMember()">保存成员</button>
+</div>
+<div class="box">
+<h3>📋成员列表</h3>
+<div id="memberList"></div>
+</div>
+<div class="box">
+<h3>📦道具登记</h3>
+<select id="itemType"></select>
+<input id="itemNum" placeholder="数量（数字）">
+<textarea id="itemRemark" placeholder="备注"></textarea>
+<button onclick="addItem()">登记道具</button>
+</div>
+<div class="box">
+<h3>📜道具记录</h3>
+<div id="itemList"></div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL="https://wvkywxqdanbsuivebb.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_xOgiVIInRtrveKeQW7hfXA_C9VdFeIZ";
+const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const PASS="6688";
+
+async function checkPwd(){
+	const val=document.getElementById("pwd").value.trim();
+	if(val===PASS){
+		document.getElementById("login").style.display="none";
+		document.getElementById("main").style.display="block";
+		await renderFlower();
+		await renderMembers();
+		await renderItems();
+	}else alert("密码错误");
+}
+
+async function addFlower(){
+	const name=document.getElementById("newFlowerName").value.trim();
+	if(!name)return alert("请输入花种名称");
+	const {error}=await supabase.from("flower_type").insert({name});
+	if(error) return alert("失败："+error.message);
+	alert("添加成功");
+	document.getElementById("newFlowerName").value="";
+	await renderFlower();
+}
+async function renderFlower(){
+	const {data}=await supabase.from("flower_type").select("*").order("name");
+	let html="<div style='display:flex;flex-wrap:wrap;gap:6px'>";
+	for(let f of data){
+		html+=`<span style='background:#eee;padding:4px 8px;border-radius:4px'>${f.name} 
+		<button class='del' style='padding:2px 6px;font-size:12px' onclick="delFlower(${f.id})">删除</button></span>`;
+	}
+	html+="</div>";
+	document.getElementById("flowerList").innerHTML=html;
+	let sel="<option value=''>请选择花种</option>";
+	data.forEach(d=>sel+=`<option value="${d.name}">${d.name}</option>`);
+	document.getElementById("itemType").innerHTML=sel;
+}
+window.delFlower=async function(id){
+	if(!confirm("确定删除该花种？历史记录不受影响"))return;
+	await supabase.from("flower_type").delete().eq("id",id);
+	renderFlower();
+}
+
+async function addMember(){
+	const nickname=document.getElementById("nickname").value.trim();
+	const level=parseInt(document.getElementById("level").value||0);
+	const remark=document.getElementById("remark").value.trim();
+	if(!nickname)return alert("请填写昵称");
+	const {error}=await supabase.from("members").insert({nickname,level,remark});
+	if(error)alert("错误："+error.message);
+	else{
+		alert("添加成功");
+		document.getElementById("nickname").value="";document.getElementById("level").value="";document.getElementById("remark").value="";
+		renderMembers();
+	}
+}
+async function renderMembers(){
+	const {data,error}=await supabase.from("members").select("*").order("created_at",{ascending:false});
+	if(error){document.getElementById("memberList").innerText="读取失败："+error.message;return;}
+	let html="<table><tr><th>昵称</th><th>等级</th><th>备注</th><th>操作</th></tr>";
+	for(let d of data){
+		html+=`<tr><td>${d.nickname}</td><td>${d.level}</td><td>${d.remark||""}</td>
+		<td><button class="del" onclick="delMember(${d.id})">删除</button></td></tr>`;
+	}
+	html+="</table>";
+	document.getElementById("memberList").innerHTML=html;
+}
+window.delMember=async function(id){
+	if(!confirm("确定删除？"))return;
+	await supabase.from("members").delete().eq("id",id);renderMembers();
+}
+
+async function addItem(){
+	const type=document.getElementById("itemType").value;
+	const num=parseInt(document.getElementById("itemNum").value||0);
+	const rem=document.getElementById("itemRemark").value.trim();
+	if(!type)return alert("请选择花种");
+	const {error}=await supabase.from("items").insert({type,num,remark:rem});
+	if(error)alert("错误："+error.message);
+	else{
+		alert("登记完成");
+		document.getElementById("itemNum").value="";document.getElementById("itemRemark").value="";
+		renderItems();
+	}
+}
+async function renderItems(){
+	const {data,error}=await supabase.from("items").select("*").order("created_at",{ascending:false});
+	if(error){document.getElementById("itemList").innerText="读取失败："+error.message;return;}
+	let html="<table><tr><th>花种</th><th>数量</th><th>备注</th><th>时间</th></tr>";
+	for(let d of data){
+		html+=`<tr><td>${d.type}</td><td>${d.num}</td><td>${d.remark||""}</td><td>${new Date(d.created_at).toLocaleString()}</td></tr>`;
+	}
+	html+="</table>";
+	document.getElementById("itemList").innerHTML=html;
+}
+</script>
+</body>
+</html>

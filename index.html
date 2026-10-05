@@ -19,21 +19,14 @@ th{background:#f3f4f6}
 </style>
 </head>
 <body>
-<div id="login" class="box">
-<h2>🔐请输入访问密码</h2>
-<input type="password" id="pwd" placeholder="输入密码">
-<button onclick="checkPwd()">进入系统</button>
-</div>
-<div id="main" style="display:none">
+<div id="main">
 <h1>🌸公会成员管理</h1>
-
 <div class="box">
 <h3>🌷花种管理（在这里添加新品种）</h3>
 <input id="newFlowerName" placeholder="输入新的花种名称">
 <button onclick="addFlower()">添加花种</button>
 <div id="flowerList" style="margin-top:10px"></div>
 </div>
-
 <div class="box">
 <h3>➕新增成员</h3>
 <input id="nickname" placeholder="游戏昵称">
@@ -57,24 +50,10 @@ th{background:#f3f4f6}
 <div id="itemList"></div>
 </div>
 </div>
-
 <script>
 const SUPABASE_URL="https://wvkywxqdanbsuivebb.supabase.co";
 const SUPABASE_ANON_KEY="sb_publishable_xOgiVIInRtrveKeQW7hfXA_C9VdFeIZ";
 const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-const PASS="6688";
-
-async function checkPwd(){
-	const val=document.getElementById("pwd").value.trim();
-	if(val===PASS){
-		document.getElementById("login").style.display="none";
-		document.getElementById("main").style.display="block";
-		await renderFlower();
-		await renderMembers();
-		await renderItems();
-	}else alert("密码错误");
-}
-
 async function addFlower(){
 	const name=document.getElementById("newFlowerName").value.trim();
 	if(!name)return alert("请输入花种名称");
